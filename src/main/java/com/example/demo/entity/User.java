@@ -76,7 +76,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return UserDetails.super.isEnabled();
+        return Boolean.TRUE.equals(enabled);
     }
     // Cột ROLE / ROLES (STRINGARRAY) trên bảng USERS không map ở đây —
     // xem ghi chú đầu bài về 2 cột này.
