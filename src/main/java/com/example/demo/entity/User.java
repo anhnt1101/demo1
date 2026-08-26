@@ -7,10 +7,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.type.YesNoConverter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
 @Getter
@@ -18,31 +20,30 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "USERS")
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "USERNAME", nullable = false, length = 255)
-    private String userName;
+    @Column(name = "USERNAME", nullable = false, unique = true, length = 255)
+    private String username;
 
     @Column(name = "PASSWORD", nullable = false, length = 255)
-    private String password;
+    private String password; // luôn lưu dạng đã BCrypt hash
 
-    @Column(name = "EMAIL", nullable = false, unique = true, length = 100)
+    @Column(name = "EMAIL", nullable = false, length = 100)
     private String email;
 
     @Convert(converter = YesNoConverter.class)
     @Column(name = "ENABLED", length = 1)
-    private boolean enabled = true;
+    private Boolean enabled = true;
 
+    @Temporal(TemporalType.DATE)
     @Column(name = "DOB")
-    @JsonFormat(pattern = "dd/MM/yyyy HH:mm", timezone = "Asia/Ho_Chi_Minh")
     private Date dob;
 
-    // EAGER vì tập role nhỏ (1-3 role/user) và cần có ngay khi build UserDetails
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "USER_ROLES",
@@ -50,5 +51,34 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "ROLE_ID")
     )
     private Set<Role> roles = new HashSet<>();
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getRolename()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return UserDetails.super.isAccountNonExpired();
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return UserDetails.super.isAccountNonLocked();
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return UserDetails.super.isCredentialsNonExpired();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return UserDetails.super.isEnabled();
+    }
+    // Cột ROLE / ROLES (STRINGARRAY) trên bảng USERS không map ở đây —
+    // xem ghi chú đầu bài về 2 cột này.
 
 }
