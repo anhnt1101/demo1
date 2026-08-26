@@ -2,10 +2,7 @@ package com.example.demo.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.type.YesNoConverter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,13 +14,22 @@ import java.util.stream.Collectors;
 @Entity
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "USERS")
 public class User implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(
+            strategy = GenerationType.SEQUENCE,
+            generator = "user_seq"
+    )
+    @SequenceGenerator(
+            name = "user_seq",
+            sequenceName = "USER_SEQ",
+            allocationSize = 1
+    )
     @Column(name = "ID")
     private Long id;
 
