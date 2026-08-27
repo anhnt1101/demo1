@@ -2,9 +2,9 @@ package com.example.demo.controller;
 
 import com.example.demo.entity.GroupCategory;
 import com.example.demo.notification.GroupCategoryChangeNotifier;
-import com.example.demo.dto.GroupCategoryRequest;
-import com.example.demo.dto.SearchRequest;
-import com.example.demo.dto.StatusListRequest;
+import com.example.demo.dto.Request.GroupCategoryRequest;
+import com.example.demo.dto.Request.SearchRequest;
+import com.example.demo.dto.Request.StatusListRequest;
 import com.example.demo.service.GroupCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,6 +37,12 @@ public class GroupCategoryController {
     @GetMapping()
     public ResponseEntity<Page<GroupCategory>> fillAll(SearchRequest searchRequest){
         return ResponseEntity.ok(groupCategoryService.fillAll(searchRequest));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getByID(@PathVariable Long id){
+        GroupCategory deleteGroupCategory = groupCategoryService.delete(id);
+        return ResponseEntity.ok(deleteGroupCategory);
     }
 
     @PostMapping()

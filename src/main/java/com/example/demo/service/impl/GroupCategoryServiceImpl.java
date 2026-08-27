@@ -2,9 +2,9 @@ package com.example.demo.service.impl;
 
 import Event.GroupCategoryChangedEvent;
 import com.example.demo.entity.GroupCategory;
-import com.example.demo.repository.GroupCategoryRepository;
-import com.example.demo.dto.GroupCategoryRequest;
-import com.example.demo.dto.SearchRequest;
+import com.example.demo.repository.GroupCategory.GroupCategoryRepository;
+import com.example.demo.dto.Request.GroupCategoryRequest;
+import com.example.demo.dto.Request.SearchRequest;
 import com.example.demo.service.GroupCategoryService;
 import com.example.demo.utils.ExcelBase;
 import jakarta.persistence.*;
@@ -62,19 +62,19 @@ public class GroupCategoryServiceImpl implements GroupCategoryService {
         return 1; // đang trong khoảng hiệu lực
     }
 
-    private List<String> checkDuplicate(GroupCategoryRequest groupCategoryRequest) {
-        List<String> duplicated = new ArrayList<>();
-        if (groupCategoryRepository.existsByParamValue(groupCategoryRequest.getParamValue())) {
-            duplicated.add("paramValue");
-        }
-        if (groupCategoryRepository.existsByParamType(groupCategoryRequest.getParamType())) {
-            duplicated.add("paramType");
-        }
-        if(groupCategoryRepository.existsOverlappingDate(groupCategoryRequest.getEffectiveDate(),groupCategoryRequest.getEndEffectiveDate())){
-            duplicated.add("exitsDate");
-        }
-        return duplicated;
-    }
+//    private List<String> checkDuplicate(GroupCategoryRequest groupCategoryRequest) {
+//        List<String> duplicated = new ArrayList<>();
+//        if (groupCategoryRepository.existsByParamValue(groupCategoryRequest.getParamValue())) {
+//            duplicated.add("paramValue");
+//        }
+//        if (groupCategoryRepository.existsByParamType(groupCategoryRequest.getParamType())) {
+//            duplicated.add("paramType");
+//        }
+//        if(groupCategoryRepository.existsOverlappingDate(groupCategoryRequest.getEffectiveDate(),groupCategoryRequest.getEndEffectiveDate())){
+//            duplicated.add("exitsDate");
+//        }
+//        return duplicated;
+//    }
 
     @Override
     public Page<GroupCategory> fillAll(SearchRequest searchRequest) {
@@ -83,15 +83,34 @@ public class GroupCategoryServiceImpl implements GroupCategoryService {
     }
 
     @Override
+    public GroupCategory getByID(Long id) {
+        return groupCategoryRepository.getReferenceById(id);
+    }
+
+    @Override
     @Transactional
     public GroupCategory add(GroupCategoryRequest groupCategoryRequest) {
-        List<String> duplicated = checkDuplicate(groupCategoryRequest);
+//        List<String> duplicated = checkDuplicate(groupCategoryRequest);
 //        if (!duplicated.isEmpty()) {
 //            throw new ResponseStatusException(
 //                    HttpStatus.CONFLICT,
 //                    "Trùng dữ liệu: " + String.join(", ", duplicated)
 //            );
 //        }
+        boolean duplicated = groupCategoryRepository.existsDuplicate(
+                null,
+                groupCategoryRequest.getParamValue(),
+                groupCategoryRequest.getParamType(),
+                groupCategoryRequest.getEffectiveDate(),
+                groupCategoryRequest.getEndEffectiveDate()
+        );
+
+        if (duplicated) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Dữ liệu đã tồn tại!"
+            );
+        }
         System.out.println(groupCategoryRequest.getEffectiveDate());
         GroupCategory groupCategory = new GroupCategory();
         groupCategory.setParamName(groupCategoryRequest.getParamName());
@@ -116,6 +135,20 @@ public class GroupCategoryServiceImpl implements GroupCategoryService {
     public GroupCategory update(GroupCategoryRequest groupCategoryRequest) {
         GroupCategory groupCategory = groupCategoryRepository.findById(groupCategoryRequest.getId()).orElseThrow(()
                 ->new IllegalArgumentException("Không tìm thấy GroupCategory"));
+        boolean duplicated = groupCategoryRepository.existsDuplicate(
+                groupCategoryRequest.getId(),
+                groupCategoryRequest.getParamValue(),
+                groupCategoryRequest.getParamType(),
+                groupCategoryRequest.getEffectiveDate(),
+                groupCategoryRequest.getEndEffectiveDate()
+        );
+
+        if (duplicated) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Dữ liệu đã tồn tại!"
+            );
+        }
         if(groupCategory.getStatus()==1){
             groupCategory.setParamName(groupCategoryRequest.getParamName());
             groupCategory.setParamValue(groupCategoryRequest.getParamValue());

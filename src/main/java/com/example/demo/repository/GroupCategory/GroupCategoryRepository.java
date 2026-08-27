@@ -1,9 +1,8 @@
-package com.example.demo.repository;
+package com.example.demo.repository.GroupCategory;
 
 import com.example.demo.entity.GroupCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,26 +10,40 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.time.LocalDateTime;
 import java.util.Date;
-import java.util.List;
 
 @Repository
 public interface GroupCategoryRepository extends JpaRepository<GroupCategory,Long>,JpaSpecificationExecutor<GroupCategory> {
 
     Page<GroupCategory> findAllByOrderByUpdateDateDesc(Pageable pageable);
 
-    boolean existsByParamValue(String paramValue);
-
-    boolean existsByParamType(String paramType);
-
+//    boolean existsByParamValue(String paramValue);
+//
+//    boolean existsByParamType(String paramType);
+//
+//    @Query("""
+//    SELECT COUNT(g) > 0
+//    FROM GroupCategory g
+//    WHERE g.effectiveDate <= :endEffectiveDate
+//      AND g.endEffectiveDate >= :effectiveDate
+//    """)
+//    boolean existsOverlappingDate(
+//            @Param("effectiveDate") Date effectiveDate,
+//            @Param("endEffectiveDate") Date endEffectiveDate
+//    );
     @Query("""
-    SELECT COUNT(g) > 0
-    FROM GroupCategory g
-    WHERE g.effectiveDate <= :endEffectiveDate
-      AND g.endEffectiveDate >= :effectiveDate
+        SELECT COUNT(g) > 0
+        FROM GroupCategory g
+        WHERE (:id IS NULL OR g.id <> :id)
+          AND g.paramValue = :paramValue
+          AND g.paramType = :paramType
+          AND g.effectiveDate <= :endEffectiveDate
+          AND g.endEffectiveDate >= :effectiveDate
     """)
-    boolean existsOverlappingDate(
+    boolean existsDuplicate(
+            @Param("id") Long id,
+            @Param("paramValue") String paramValue,
+            @Param("paramType") String paramType,
             @Param("effectiveDate") Date effectiveDate,
             @Param("endEffectiveDate") Date endEffectiveDate
     );

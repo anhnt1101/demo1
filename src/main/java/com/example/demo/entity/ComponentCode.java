@@ -17,4 +17,7 @@ public class ComponentCode {
     @Column(name = "COMPONENT_CODE")
     private String componentCode;
 
+    @Column(name = "COMPONENT_NAME")
+    private String componentName;
+
 }

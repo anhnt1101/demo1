@@ -1,8 +1,8 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.GroupCategory;
-import com.example.demo.dto.GroupCategoryRequest;
-import com.example.demo.dto.SearchRequest;
+import com.example.demo.dto.Request.GroupCategoryRequest;
+import com.example.demo.dto.Request.SearchRequest;
 import org.springframework.data.domain.Page;
 
 import java.io.ByteArrayInputStream;
@@ -12,6 +12,8 @@ import java.util.Map;
 public interface GroupCategoryService {
 
     Page<GroupCategory> fillAll(SearchRequest searchRequest);
+
+    GroupCategory getByID(Long id);
 
     GroupCategory add(GroupCategoryRequest groupCategoryRequest);
 

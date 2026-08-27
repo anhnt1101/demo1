@@ -1,7 +1,7 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.entity.ComponentCode;
-import com.example.demo.repository.ComponentCodeRepository;
+import com.example.demo.repository.Component.ComponentCodeRepository;
 import com.example.demo.service.ComponentCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
