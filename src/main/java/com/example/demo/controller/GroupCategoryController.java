@@ -41,8 +41,8 @@ public class GroupCategoryController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getByID(@PathVariable Long id){
-        GroupCategory deleteGroupCategory = groupCategoryService.delete(id);
-        return ResponseEntity.ok(deleteGroupCategory);
+        GroupCategory category = groupCategoryService.getByID(id);
+        return ResponseEntity.ok(category);
     }
 
     @PostMapping()
