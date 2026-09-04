@@ -32,13 +32,19 @@ public interface GroupCategoryRepository extends JpaRepository<GroupCategory,Lon
 //            @Param("endEffectiveDate") Date endEffectiveDate
 //    );
     @Query("""
-        SELECT COUNT(g) > 0
+        SELECT CASE WHEN COUNT(g) > 0 THEN true ELSE false END
         FROM GroupCategory g
         WHERE (:id IS NULL OR g.id <> :id)
           AND g.paramValue = :paramValue
           AND g.paramType = :paramType
-          AND g.effectiveDate <= :endEffectiveDate
-          AND g.endEffectiveDate >= :effectiveDate
+          AND (
+                :endEffectiveDate IS NULL
+                OR g.effectiveDate <= :endEffectiveDate
+              )
+          AND (
+                g.endEffectiveDate IS NULL
+                OR g.endEffectiveDate >= :effectiveDate
+              )
     """)
     boolean existsDuplicate(
             @Param("id") Long id,

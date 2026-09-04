@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -35,6 +36,7 @@ public class GroupCategoryController {
     }
 
     @GetMapping()
+    @PreAuthorize("hasAnyAuthority('ROLE_MAKER','ROLE_CHECKER','ROLE_ADMIN','ROLE_VIEWER')")
     public ResponseEntity<Page<GroupCategory>> fillAll(SearchRequest searchRequest){
         return ResponseEntity.ok(groupCategoryService.fillAll(searchRequest));
     }

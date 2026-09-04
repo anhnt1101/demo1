@@ -11,7 +11,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "ROLE")
+@Table(name = "PMH_ROLES")
 public class Role {
 
     @Id
@@ -19,8 +19,11 @@ public class Role {
     @Column(name = "ID")
     private Long id;
 
-    @Column(name = "ROLENAME", nullable = false,length = 50,unique = true)
-    private String rolename;
+    @Column(name = "ROLE_CODE", nullable = false,length = 50,unique = true)
+    private String roleCode;
+
+    @Column(name = "ROLE_NAME", nullable = false,length = 50,unique = true)
+    private String roleName;
 
     @Column(name = "DESCRIPTION", length = 100)
     private String description;

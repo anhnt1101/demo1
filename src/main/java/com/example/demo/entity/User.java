@@ -17,24 +17,13 @@ import java.util.stream.Collectors;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "USERS")
+@Table(name = "PMH_USERS")
 public class User implements UserDetails {
 
     @Id
-    @GeneratedValue(
-            strategy = GenerationType.SEQUENCE,
-            generator = "user_seq"
-    )
-    @SequenceGenerator(
-            name = "user_seq",
-            sequenceName = "USER_SEQ",
-            allocationSize = 1
-    )
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ID")
     private Long id;
-
-    @Column(name = "FULL_NAME", nullable = false, length = 255)
-    private String fullName;
 
     @Column(name = "USERNAME", nullable = false, unique = true, length = 255)
     private String username;
@@ -49,13 +38,9 @@ public class User implements UserDetails {
     @Column(name = "ENABLED", length = 1)
     private Boolean enabled = true;
 
-    @Temporal(TemporalType.DATE)
-    @Column(name = "DOB")
-    private Date dob;
-
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-            name = "USER_ROLES",
+            name = "PMH_USER_ROLE",
             joinColumns = @JoinColumn(name = "USER_ID"),
             inverseJoinColumns = @JoinColumn(name = "ROLE_ID")
     )
@@ -64,7 +49,7 @@ public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getRolename()))
+                .map(role -> new SimpleGrantedAuthority(role.getRoleCode()))
                 .collect(Collectors.toList());
     }
 

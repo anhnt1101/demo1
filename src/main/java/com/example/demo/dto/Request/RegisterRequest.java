@@ -15,6 +15,9 @@ public class RegisterRequest {
     @Size(min = 6, message = "password phải tối thiểu 6 ký tự")
     private String password;
 
+    @NotBlank(message = "password không được để trống")
+    private String role;
+
     @NotBlank(message = "email không được để trống")
     @Email(message = "email không đúng định dạng")
     private String email;

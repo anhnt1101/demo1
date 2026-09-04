@@ -48,12 +48,12 @@ public class AuthService {
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new IllegalArgumentException("Email đã được sử dụng");
         }
-
+        System.out.println("123123122222222222222" + req.getRole() );
         // 3. Lấy ROLE_USER
-        Role userRole = roleRepository.findByRolename("ROLE_USER")
+        Role userRole = roleRepository.findByRoleCode(req.getRole())
                 .orElseThrow(() ->
                         new IllegalStateException(
-                                "Role USER chưa được seed trong DB"
+                                "Role chưa được seed trong DB"
                         )
                 );
 
@@ -75,7 +75,7 @@ public class AuthService {
         // 7. Lấy danh sách role trả về frontend
         List<String> roles = user.getRoles()
                 .stream()
-                .map(Role::getRolename)
+                .map(Role::getRoleName)
                 .toList();
 
         // 8. Trả response
@@ -92,7 +92,6 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
-
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtTokenUtils.generateToken(userDetails);
 
