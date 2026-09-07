@@ -48,22 +48,34 @@ public class ExcelBase {
 
             // 3. Điền dữ liệu
             int rowIdx = 1;
+            int stt = 1;
+
             for (T item : data) {
+
                 Row row = sheet.createRow(rowIdx++);
+
                 int cellIdx = 0;
+
                 for (String fieldName : columnMap.values()) {
+
                     Cell cell = row.createCell(cellIdx++);
+
+                    // STT là cột đặc biệt
+                    if ("sttNew".equals(fieldName)) {
+                        cell.setCellValue(stt);
+                        continue;
+                    }
+
                     Object value = getFieldValue(item, fieldName);
 
-                    if (valueMappings != null && valueMappings.containsKey(fieldName)) {
+                    if ( valueMappings != null&& valueMappings.containsKey(fieldName) ) {
                         String displayValue = "";
                         if (value != null) {
                             displayValue = valueMappings.get(fieldName).get(value);
                         }
-
-                        cell.setCellValue(displayValue != null ? displayValue : "");
+                        cell.setCellValue(displayValue != null ? displayValue: ""
+                        );
                     } else {
-                        // ... (Logic xử lý Date, Number như cũ) ...
                         if (value instanceof Date) {
                             cell.setCellValue(sdf.format((Date) value));
                         } else if (value instanceof Number) {
@@ -73,6 +85,8 @@ public class ExcelBase {
                         }
                     }
                 }
+
+                stt++;
             }
 
             for (int i = 0; i < columnMap.size(); i++) {
