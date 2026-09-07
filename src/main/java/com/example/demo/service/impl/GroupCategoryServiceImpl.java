@@ -71,7 +71,10 @@ public class GroupCategoryServiceImpl implements GroupCategoryService {
 
     @Override
     public GroupCategory getByID(Long id) {
-        return groupCategoryRepository.getReferenceById(id);
+        return groupCategoryRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Không tìm thấy GroupCategory"
+                ));
     }
 
     @Override
@@ -159,7 +162,9 @@ public class GroupCategoryServiceImpl implements GroupCategoryService {
     public GroupCategory delete(Long id) {
         GroupCategory groupCategory = groupCategoryRepository.findById(id).orElseThrow(()
                 ->new IllegalArgumentException("Không tìm thấy GroupCategory"));
-        groupCategoryRepository.delete(groupCategory);
+        if(groupCategory.getStatus() == 1 ||groupCategory.getStatus() == 5 && groupCategory.getIsActive() == 1){
+            groupCategoryRepository.delete(groupCategory);
+        }
         return groupCategory;
     }
 
@@ -193,7 +198,7 @@ public class GroupCategoryServiceImpl implements GroupCategoryService {
         if (!Integer.valueOf(1).equals(firstStatus) && !Integer.valueOf(5).equals(firstStatus)
                 && !Integer.valueOf(7).equals(firstStatus) || !Integer.valueOf(3).equals(newStatus)) {
             throw new IllegalStateException(
-                    "Chỉ bản ghi trạng thái 1, 7 mới được gửi duyệt sang trạng thái 3!"
+                    "Chỉ bản ghi trạng thái 1,5,7 mới được gửi duyệt sang trạng thái 3!"
             );
         }
 
