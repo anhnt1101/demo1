@@ -48,23 +48,12 @@ public class AuthService {
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new IllegalArgumentException("Email đã được sử dụng");
         }
-        System.out.println("123123122222222222222" + req.getRole() );
+
         // 3. Lấy ROLE_USER
-        Role userRole = roleRepository.findByRoleCode(req.getRole())
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Role chưa được seed trong DB"
-                        )
-                );
+        Role userRole = roleRepository.findByRoleCode(req.getRole()).orElseThrow(() -> new IllegalStateException("Role chưa được seed trong DB"));
 
         // 4. Tạo User
-        User user = User.builder()
-                .username(req.getUsername())
-                .email(req.getEmail())
-                .password(passwordEncoder.encode(req.getPassword()))
-                .roles(Set.of(userRole))
-                .enabled(true)
-                .build();
+        User user = User.builder().username(req.getUsername()).email(req.getEmail()).password(passwordEncoder.encode(req.getPassword())).roles(Set.of(userRole)).enabled(true).build();
 
         // 5. Lưu DB
         userRepository.save(user);
@@ -73,31 +62,20 @@ public class AuthService {
         String token = jwtTokenUtils.generateToken(user);
 
         // 7. Lấy danh sách role trả về frontend
-        List<String> roles = user.getRoles()
-                .stream()
-                .map(Role::getRoleName)
-                .toList();
+        List<String> roles = user.getRoles().stream().map(Role::getRoleName).toList();
 
         // 8. Trả response
-        return new AuthResponse(
-                token,
-                user.getUsername(),
-                roles
-        );
+        return new AuthResponse(token, user.getUsername(), roles);
     }
 
     public LoginResponse login(LoginRequest request) {
         // authenticate() tự gọi CustomUserDetailsService + so khớp password qua BCrypt.
         // Sai username/password -> ném BadCredentialsException -> GlobalExceptionHandler trả 401.
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtTokenUtils.generateToken(userDetails);
 
-        List<String> roles = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toList());
+        List<String> roles = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList());
 
         return new LoginResponse(token, userDetails.getUsername(), roles);
     }

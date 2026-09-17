@@ -5,6 +5,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
@@ -12,7 +13,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+
 import org.apache.poi.ss.usermodel.*;
+
 import java.io.*;
 import java.util.*;
 
@@ -21,11 +24,7 @@ public class ExcelBase {
     private static final String DATE_FORMAT = "dd/MM/yyyy HH:mm";
 
     // --- EXPORT GENERIC ---
-    public static <T> ByteArrayInputStream exportToExcel(
-            List<T> data,
-            LinkedHashMap<String, String> columnMap,
-            Map<String, Map<Object, String>> valueMappings,
-            String sheetName) {
+    public static <T> ByteArrayInputStream exportToExcel(List<T> data, LinkedHashMap<String, String> columnMap, Map<String, Map<Object, String>> valueMappings, String sheetName) {
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet(sheetName);
@@ -68,13 +67,12 @@ public class ExcelBase {
 
                     Object value = getFieldValue(item, fieldName);
 
-                    if ( valueMappings != null&& valueMappings.containsKey(fieldName) ) {
+                    if (valueMappings != null && valueMappings.containsKey(fieldName)) {
                         String displayValue = "";
                         if (value != null) {
                             displayValue = valueMappings.get(fieldName).get(value);
                         }
-                        cell.setCellValue(displayValue != null ? displayValue: ""
-                        );
+                        cell.setCellValue(displayValue != null ? displayValue : "");
                     } else {
                         if (value instanceof Date) {
                             cell.setCellValue(sdf.format((Date) value));

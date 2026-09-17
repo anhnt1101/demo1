@@ -11,7 +11,7 @@ public class GroupCategoryJob {
 
     private final GroupCategoryService groupCategoryService;
 
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(fixedRate = 5000)
     public void testJob() {
 
         groupCategoryService.updateIsActiveByEffectiveDate();
