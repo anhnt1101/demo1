@@ -112,6 +112,7 @@ public class ExportWorker {
             exportService.markCompleted(requestId, fileName, objectKey);
 
             log.info("Export #{} COMPLETED, rows={}, object={}", requestId, writer.getTotalRowsWritten(), objectKey);
+
         } catch (Exception e) {
             log.error("Export #{} ERROR", requestId, e);
             /*

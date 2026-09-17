@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.List;
 
 @Component
@@ -34,10 +35,10 @@ public class ExportRequestJob {
     public void poll() {
 
         int freeWorkers = executor.getMaxPoolSize() - executor.getActiveCount();
-
         if (freeWorkers <= 0) {
             return;
         }
+
 
         List<Long> ids = exportService.findNextPendingIds(freeWorkers);
 
@@ -61,6 +62,8 @@ public class ExportRequestJob {
                 log.warn("Export #{} bị executor reject, reset NEW", id);
             }
         }
+
+
     }
 
 

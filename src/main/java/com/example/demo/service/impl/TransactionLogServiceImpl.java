@@ -2,7 +2,7 @@ package com.example.demo.service.impl;
 
 import com.example.demo.dto.Request.TransactionLogRequest;
 import com.example.demo.entity.TransactionLog;
-import com.example.demo.repository.TransationLog.TransactionLogRepository;
+import com.example.demo.repository.TransactionLogRepository;
 import com.example.demo.service.TransactionLogSevice;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;

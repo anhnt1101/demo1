@@ -1,4 +1,4 @@
-package com.example.demo.repository.GroupCategory;
+package com.example.demo.repository;
 
 import com.example.demo.entity.GroupCategory;
 import org.springframework.data.domain.Page;

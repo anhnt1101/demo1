@@ -288,9 +288,10 @@ public class TransactionLogExportHandler implements ExportHandler {
          * ID DESC giúp thứ tự ổn định
          * nếu nhiều record cùng CREATED_AT.
          */
-        sql.append("""
-                 ORDER BY CREATED_AT DESC, ID DESC
-                """);
+//        sql.append("""
+//                 ORDER BY CREATED_AT DESC, ID DESC
+//                """);
+
 
 
         /*

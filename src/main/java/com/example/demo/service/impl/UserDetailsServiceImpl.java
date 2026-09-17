@@ -1,6 +1,6 @@
 package com.example.demo.service.impl;
 
-import com.example.demo.repository.User.UserRepository;
+import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

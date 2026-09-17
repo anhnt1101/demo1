@@ -2,7 +2,7 @@ package com.example.demo.service.impl;
 
 import Event.GroupCategoryChangedEvent;
 import com.example.demo.entity.GroupCategory;
-import com.example.demo.repository.GroupCategory.GroupCategoryRepository;
+import com.example.demo.repository.GroupCategoryRepository;
 import com.example.demo.dto.Request.GroupCategoryRequest;
 import com.example.demo.dto.Request.SearchRequest;
 import com.example.demo.service.GroupCategoryService;
