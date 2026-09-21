@@ -6,6 +6,7 @@ import com.example.demo.dto.Response.ExportRequestResponse;
 import com.example.demo.entity.ExportRequest;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ExportService {
 
@@ -13,11 +14,13 @@ public interface ExportService {
 
     List<Long> findNextPendingIds(int limit);
 
+    List<ExportRequestResponse> findAllByUserId(Long userId);
+
     boolean tryClaim(Long id);
 
     void resetToNew(Long id);
 
-    void markCompleted(Long id, String fileName, String objectKey);
+    void markCompleted(Long id, String fileName, String objectKey, String path);
 
     void markError(Long id, String message);
 
@@ -26,8 +29,6 @@ public interface ExportService {
     ExportRequest getForProcessing(Long id);
 
     ExportRequestResponse getStatus(Long userID, Long id);
-
-    List<ExportRequestResponse> listMine(Long userID);
 
     DownloadUrlResponse issueDownloadUrl(Long userID, Long id);
 }

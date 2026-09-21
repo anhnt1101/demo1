@@ -13,15 +13,5 @@ public class CreateExportRequest {
     @NotBlank(message = "exportType không được để trống")
     private String exportType;
 
-    /*
-     * Filter của màn hình.
-     *
-     * Ví dụ:
-     * {
-     *   "status": "SUCCESS",
-     *   "fromDate": "...",
-     *   "toDate": "..."
-     * }
-     */
     private Map<String, Object> params;
 }

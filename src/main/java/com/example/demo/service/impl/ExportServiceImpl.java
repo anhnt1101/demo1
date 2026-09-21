@@ -6,8 +6,9 @@ import com.example.demo.dto.Response.DownloadUrlResponse;
 import com.example.demo.dto.Response.ExportRequestResponse;
 import com.example.demo.entity.ExportRequest;
 import com.example.demo.repository.ExportRequestRepository;
-import com.example.demo.service.Export.ExportHandler;
+import com.example.demo.service.ExportHandler;
 import com.example.demo.service.ExportService;
+import com.example.demo.service.MinioStorageService;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +71,12 @@ public class ExportServiceImpl implements ExportService {
         return repository.findNextPendingIds(limit);
     }
 
+    @Override
+    public List<ExportRequestResponse> findAllByUserId(Long userId) {
+
+        return repository.findAllByUserIdOrderByCreatedDateDesc(userId).stream().map(this::toResponse).toList();
+    }
+
 
     @Override
     public boolean tryClaim(Long id) {
@@ -84,8 +91,8 @@ public class ExportServiceImpl implements ExportService {
 
 
     @Override
-    public void markCompleted(Long id, String fileName, String objectKey) {
-        int updated = repository.markCompleted(id, fileName, objectKey);
+    public void markCompleted(Long id, String fileName, String objectKey, String path) {
+        int updated = repository.markCompleted(id, fileName, objectKey, path);
         if (updated != 1) {
             throw new IllegalStateException("Không thể chuyển export #" + id + " sang COMPLETED");
         }
@@ -124,13 +131,6 @@ public class ExportServiceImpl implements ExportService {
         return toResponse(getOwned(userID, id));
     }
 
-
-    @Override
-    public List<ExportRequestResponse> listMine(Long userID) {
-        return repository.findTop50ByUserIdOrderByCreatedDateDesc(userID).stream().map(this::toResponse).toList();
-    }
-
-
     @Override
     public DownloadUrlResponse issueDownloadUrl(Long userID, Long id) {
         ExportRequest request = getOwned(userID, id);
@@ -139,21 +139,13 @@ public class ExportServiceImpl implements ExportService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "File chưa export xong");
         }
 
-        if (request.getObjectKey() == null) {
-            throw new ResponseStatusException(HttpStatus.GONE, "File export không còn tồn tại");
-        }
+        if (request.getPath() == null || request.getPath().isBlank()) {
 
-        try {
-            String url = minioStorageService.createDownloadUrl(request.getObjectKey());
-            /*
-             * Với presigned URL,
-             * DOWNLOADED nghĩa là user đã xin link tải.
-             */
-            repository.markDownloaded(id);
-            return new DownloadUrlResponse(url, minioStorageService.calculateExpiredAt());
-        } catch (Exception e) {
-            throw new RuntimeException("Không tạo được URL tải file", e);
+            throw new ResponseStatusException(HttpStatus.GONE, "URL tải file không tồn tại");
         }
+        repository.markDownloaded(id);
+        LocalDateTime expiresAt = request.getCompletedDate().plusHours(24);
+        return new DownloadUrlResponse(request.getPath(), expiresAt);
     }
 
 
@@ -190,6 +182,6 @@ public class ExportServiceImpl implements ExportService {
     }
 
     private ExportRequestResponse toResponse(ExportRequest e) {
-        return new ExportRequestResponse(e.getId(), e.getExportType(), e.getExportStatus(), e.getDownloadStatus(), e.getFileName(), e.getErrorMessage(), e.getCreatedDate(), e.getStartedDate(), e.getCompletedDate(), e.getDownloadedDate());
+        return new ExportRequestResponse(e.getId(), e.getExportType(), e.getExportStatus(), e.getDownloadStatus(), e.getFileName(), e.getErrorMessage(), e.getPath(), e.getCreatedDate(), e.getStartedDate(), e.getCompletedDate(), e.getDownloadedDate());
     }
 }

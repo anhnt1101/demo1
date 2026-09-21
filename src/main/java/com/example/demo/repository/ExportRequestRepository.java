@@ -65,12 +65,13 @@ public interface ExportRequestRepository extends JpaRepository<ExportRequest, Lo
             SET EXPORT_STATUS = 'COMPLETED',
                 FILE_NAME = :fileName,
                 OBJECT_KEY = :objectKey,
+                PATH = :path,
                 COMPLETED_DATE = SYSTIMESTAMP,
                 ERROR_MESSAGE = NULL
             WHERE ID = :id
               AND EXPORT_STATUS = 'PROCESSING'
             """, nativeQuery = true)
-    int markCompleted(@Param("id") Long id, @Param("fileName") String fileName, @Param("objectKey") String objectKey);
+    int markCompleted(@Param("id") Long id, @Param("fileName") String fileName, @Param("objectKey") String objectKey, @Param("path") String path);
 
     @Transactional
     @Modifying
@@ -107,5 +108,6 @@ public interface ExportRequestRepository extends JpaRepository<ExportRequest, Lo
 
     Optional<ExportRequest> findByIdAndUserId(Long id, Long userID);
 
-    List<ExportRequest> findTop50ByUserIdOrderByCreatedDateDesc(Long userID);
+    List<ExportRequest> findAllByUserIdOrderByCreatedDateDesc(Long userId);
+
 }

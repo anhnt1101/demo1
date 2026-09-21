@@ -19,6 +19,8 @@ public class ExportRequestResponse {
 
     private String fileName;
 
+    private String path;
+
     private String errorMessage;
 
     private LocalDateTime createdDate;

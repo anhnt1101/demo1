@@ -21,35 +21,21 @@ public class ExportController {
 
     private final ExportService exportService;
 
-    /*
-     * 1. Tạo request.
-     *
-     * Chỉ INSERT DB.
-     * Không export tại request HTTP này.
-     */
     @PostMapping
     public ResponseEntity<ExportRequestResponse> create(@AuthenticationPrincipal User user, @Valid @RequestBody CreateExportRequest request) {
         return ResponseEntity.ok(exportService.createRequest(user.getId(), request));
     }
 
-
-    /*
-     * FE polling.
-     */
     @GetMapping("/{id}")
     public ResponseEntity<ExportRequestResponse> getStatus(@AuthenticationPrincipal User user, @PathVariable Long id) {
         return ResponseEntity.ok(exportService.getStatus(user.getId(), id));
     }
 
-
-    /*
-     * Lịch sử 50 export gần nhất.
-     */
     @GetMapping("/mine")
     public ResponseEntity<List<ExportRequestResponse>> mine(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(exportService.listMine(user.getId()));
-    }
 
+        return ResponseEntity.ok(exportService.findAllByUserId(user.getId()));
+    }
 
     /*
      * BE kiểm tra owner trước,
@@ -60,4 +46,5 @@ public class ExportController {
 
         return ResponseEntity.ok(exportService.issueDownloadUrl(user.getId(), id));
     }
+
 }

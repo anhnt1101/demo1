@@ -1,8 +1,10 @@
-package com.example.demo.service.Export;
+package com.example.demo.service.impl;
 
 import com.example.demo.constants.ExportType;
 import com.example.demo.dto.Request.TransactionLogRequest;
 import com.example.demo.entity.ExportRequest;
+import com.example.demo.service.ExportHandler;
+import com.example.demo.service.ExportSheetWriter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,7 +27,7 @@ import java.util.Locale;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TransactionLogExportHandler implements ExportHandler {
+public class    TransactionLogExportHandlerImpl implements ExportHandler {
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -47,62 +49,30 @@ public class TransactionLogExportHandler implements ExportHandler {
     @Override
     public void writeRows(ExportRequest request, ExportSheetWriter writer) throws Exception {
 
-        /*
-         * ==========================================
-         * HEADER
-         * ==========================================
-         */
         writer.writeHeader("ID", "TRANSACTION_CODE", "ACCOUNT_NO", "AMOUNT", "STATUS", "CREATED_AT", "DESCRIPTION", "REFERENCE_NO", "UPDATED_AT");
 
-
-        /*
-         * ==========================================
-         * PARSE PARAMS
-         * ==========================================
-         *
-         * Dùng đúng DTO mà API search đang dùng.
-         *
-         * page/size có thể tồn tại trong JSON
-         * nhưng export KHÔNG sử dụng.
-         */
         TransactionLogRequest filter = parseParams(request.getParams());
-
-
-        /*
-         * ==========================================
-         * VALIDATE
-         * ==========================================
-         */
 
         if (filter.getMinAmount() != null && filter.getMaxAmount() != null && filter.getMinAmount() > filter.getMaxAmount()) {
 
             throw new IllegalArgumentException("Số tiền tối thiểu không được lớn hơn số tiền tối đa");
         }
 
-
         if (filter.getMinAmount() != null && filter.getMinAmount() < 0) {
 
             throw new IllegalArgumentException("Số tiền tối thiểu không được nhỏ hơn 0");
         }
-
 
         if (filter.getMaxAmount() != null && filter.getMaxAmount() < 0) {
 
             throw new IllegalArgumentException("Số tiền tối đa không được nhỏ hơn 0");
         }
 
-
         if (filter.getFromDate() != null && filter.getToDate() != null && filter.getFromDate().after(filter.getToDate())) {
 
             throw new IllegalArgumentException("Từ ngày không được lớn hơn đến ngày");
         }
 
-
-        /*
-         * ==========================================
-         * BASE SQL
-         * ==========================================
-         */
         StringBuilder sql = new StringBuilder("""
                 SELECT
                     ID,
@@ -118,20 +88,8 @@ public class TransactionLogExportHandler implements ExportHandler {
                 WHERE 1 = 1
                 """);
 
-
         List<Object> parameters = new ArrayList<>();
 
-
-        /*
-         * ==========================================
-         * TRANSACTION_CODE
-         * ==========================================
-         *
-         * Giống Search:
-         *
-         * LOWER(TRANSACTION_CODE)
-         * LIKE '%value%'
-         */
         if (StringUtils.hasText(filter.getTransactionCode())) {
 
             sql.append("""
@@ -143,17 +101,6 @@ public class TransactionLogExportHandler implements ExportHandler {
             parameters.add("%" + filter.getTransactionCode().trim().toLowerCase(Locale.ROOT) + "%");
         }
 
-
-        /*
-         * ==========================================
-         * ACCOUNT_NO
-         * ==========================================
-         *
-         * Giống Search:
-         *
-         * LOWER(ACCOUNT_NO)
-         * LIKE '%value%'
-         */
         if (StringUtils.hasText(filter.getAccountNo())) {
 
             sql.append("""
@@ -165,16 +112,6 @@ public class TransactionLogExportHandler implements ExportHandler {
             parameters.add("%" + filter.getAccountNo().trim().toLowerCase(Locale.ROOT) + "%");
         }
 
-
-        /*
-         * ==========================================
-         * STATUS
-         * ==========================================
-         *
-         * Giống Search:
-         *
-         * STATUS = ?
-         */
         if (StringUtils.hasText(filter.getStatus())) {
 
             sql.append("""
@@ -185,16 +122,6 @@ public class TransactionLogExportHandler implements ExportHandler {
             parameters.add(filter.getStatus().trim());
         }
 
-
-        /*
-         * ==========================================
-         * MIN AMOUNT
-         * ==========================================
-         *
-         * Giống Search:
-         *
-         * AMOUNT >= minAmount
-         */
         if (filter.getMinAmount() != null) {
 
             sql.append("""
@@ -205,16 +132,6 @@ public class TransactionLogExportHandler implements ExportHandler {
             parameters.add(filter.getMinAmount());
         }
 
-
-        /*
-         * ==========================================
-         * MAX AMOUNT
-         * ==========================================
-         *
-         * Giống Search:
-         *
-         * AMOUNT <= maxAmount
-         */
         if (filter.getMaxAmount() != null) {
 
             sql.append("""
@@ -225,24 +142,6 @@ public class TransactionLogExportHandler implements ExportHandler {
             parameters.add(filter.getMaxAmount());
         }
 
-
-        /*
-         * ==========================================
-         * FROM DATE
-         * ==========================================
-         *
-         * Có đầy đủ:
-         *
-         * dd/MM/yyyy HH:mm:ss
-         *
-         * Ví dụ:
-         *
-         * 16/09/2026 08:30:15
-         *
-         * =>
-         *
-         * CREATED_AT >= ?
-         */
         if (filter.getFromDate() != null) {
 
             sql.append("""
@@ -253,20 +152,6 @@ public class TransactionLogExportHandler implements ExportHandler {
             parameters.add(new Timestamp(filter.getFromDate().getTime()));
         }
 
-
-        /*
-         * ==========================================
-         * TO DATE
-         * ==========================================
-         *
-         * Ví dụ:
-         *
-         * 16/09/2026 17:45:30
-         *
-         * =>
-         *
-         * CREATED_AT <= ?
-         */
         if (filter.getToDate() != null) {
 
             sql.append("""
@@ -276,7 +161,6 @@ public class TransactionLogExportHandler implements ExportHandler {
 
             parameters.add(new Timestamp(filter.getToDate().getTime()));
         }
-
 
         /*
          * ==========================================
@@ -292,21 +176,9 @@ public class TransactionLogExportHandler implements ExportHandler {
 //                 ORDER BY CREATED_AT DESC, ID DESC
 //                """);
 
-
-
-        /*
-         * ==========================================
-         * LOG
-         * ==========================================
-         */
         log.info("Export #{} query TRANSACTION_LOG", request.getId());
-
-
         log.info("Export SQL: {}", sql);
-
-
         log.info("Export parameters: {}", parameters);
-
 
         /*
          * ==========================================
@@ -363,12 +235,6 @@ public class TransactionLogExportHandler implements ExportHandler {
 
                                 toLocalDateTime(rs.getTimestamp("UPDATED_AT"))));
 
-
-        /*
-         * ==========================================
-         * DONE
-         * ==========================================
-         */
         log.info("Export #{} stream xong {} dòng TRANSACTION_LOG", request.getId(), writer.getTotalRowsWritten());
     }
 

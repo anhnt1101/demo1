@@ -28,6 +28,8 @@ public class ExportRequest {
     @Column(name = "EXPORT_TYPE", nullable = false, length = 50)
     private String exportType;
 
+    @Column(name = "PATH", length = 4000)
+    private String path;
 
     @Lob
     @Column(name = "PARAMS")

@@ -1,4 +1,4 @@
-package com.example.demo.service.impl;
+package com.example.demo.service;
 
 import io.minio.*;
 import lombok.RequiredArgsConstructor;

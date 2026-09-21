@@ -1,6 +1,6 @@
 package com.example.demo.notification;
 
-import Event.GroupCategoryChangedEvent;
+import com.example.demo.Event.GroupCategoryChangedEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;

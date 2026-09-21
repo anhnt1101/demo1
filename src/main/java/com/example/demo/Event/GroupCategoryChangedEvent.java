@@ -1,4 +1,4 @@
-package Event;
+package com.example.demo.Event;
 
 public record GroupCategoryChangedEvent() {
 }

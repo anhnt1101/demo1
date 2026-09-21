@@ -1,10 +1,6 @@
-package com.example.demo.Job;
+package com.example.demo.service;
 
 import com.example.demo.entity.ExportRequest;
-import com.example.demo.service.Export.ExportHandler;
-import com.example.demo.service.Export.ExportSheetWriter;
-import com.example.demo.service.ExportService;
-import com.example.demo.service.impl.MinioStorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
@@ -105,13 +101,15 @@ public class ExportWorker {
 
             uploaded = true;
 
+            String path = minioStorageService.createDownloadUrl(objectKey);
+
             /*
              * Chỉ COMPLETED khi upload MinIO
              * thành công.
              */
-            exportService.markCompleted(requestId, fileName, objectKey);
+            exportService.markCompleted(requestId, fileName, objectKey, path);
 
-            log.info("Export #{} COMPLETED, rows={}, object={}", requestId, writer.getTotalRowsWritten(), objectKey);
+            log.info("Export #{} COMPLETED, rows={}, object={}, path={}", requestId, writer.getTotalRowsWritten(), objectKey, path);
 
         } catch (Exception e) {
             log.error("Export #{} ERROR", requestId, e);
