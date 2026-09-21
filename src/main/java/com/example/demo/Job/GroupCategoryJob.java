@@ -15,7 +15,7 @@ public class GroupCategoryJob {
     public void testJob() {
 
         groupCategoryService.updateIsActiveByEffectiveDate();
-        System.out.println("JOB đang chạy...");
+        System.out.println("JOB UPDATE GROUP_CATEGORY");
     }
 
 }

@@ -18,6 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.example.demo.kafka.ExportJobPublisher;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -33,43 +34,131 @@ public class ExportServiceImpl implements ExportService {
 
     private final MinioStorageService minioStorageService;
 
+    private final ExportJobPublisher exportJobPublisher;
+
     private final Map<String, ExportHandler> handlerByType;
 
 
     @Value("${export.stale-after-minutes:120}")
     private int staleAfterMinutes;
 
-    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers) {
+//    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers) {
+//        this.repository = repository;
+//        this.objectMapper = objectMapper;
+//        this.minioStorageService = minioStorageService;
+//        this.handlerByType = handlers.stream().collect(Collectors.toMap(ExportHandler::getExportType, handler -> handler));
+//    }
+
+    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportJobPublisher exportJobPublisher) {
+
         this.repository = repository;
+
         this.objectMapper = objectMapper;
+
         this.minioStorageService = minioStorageService;
+
+        this.exportJobPublisher = exportJobPublisher;
+
         this.handlerByType = handlers.stream().collect(Collectors.toMap(ExportHandler::getExportType, handler -> handler));
     }
 
 
-    @Override
-    @Transactional
-    public ExportRequestResponse createRequest(Long id, CreateExportRequest request) {
+//    @Override
+//    @Transactional
+//    public ExportRequestResponse createRequest(Long id, CreateExportRequest request) {
+//
+//        if (!handlerByType.containsKey(request.getExportType())) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không hỗ trợ exportType: " + request.getExportType());
+//        }
+//
+//        ExportRequest entity = new ExportRequest();
+//        entity.setUserId(id);
+//        entity.setExportType(request.getExportType());
+//        entity.setParams(toJson(request.getParams()));
+//        entity.setExportStatus(ExportStatus.NEW);
+//        entity.setDownloadStatus(DownloadStatus.NOT_DOWNLOADED);
+//        repository.save(entity);
+//        return toResponse(entity);
+//    }
 
+    @Override
+    public ExportRequestResponse createRequest(Long userId, CreateExportRequest request) {
+
+        /*
+         * 1. Kiểm tra loại export có Handler hay không.
+         */
         if (!handlerByType.containsKey(request.getExportType())) {
+
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không hỗ trợ exportType: " + request.getExportType());
         }
 
+        /*
+         * 2. Tạo EXPORT_REQUEST.
+         */
         ExportRequest entity = new ExportRequest();
-        entity.setUserId(id);
+
+        entity.setUserId(userId);
+
         entity.setExportType(request.getExportType());
+
         entity.setParams(toJson(request.getParams()));
+
         entity.setExportStatus(ExportStatus.NEW);
+
         entity.setDownloadStatus(DownloadStatus.NOT_DOWNLOADED);
-        repository.save(entity);
+
+
+        /*
+         * 3. Lưu Oracle trước.
+         *
+         * Không đặt @Transactional trên method này
+         * để transaction repository kết thúc trước
+         * khi publish Kafka.
+         */
+        entity = repository.saveAndFlush(entity);
+
+
+        try {
+
+            /*
+             * 4. Gửi requestId sang Kafka.
+             *
+             * Ví dụ:
+             *
+             * EXPORT_REQUEST ID = 28
+             *
+             * Kafka message = "28"
+             */
+            exportJobPublisher.publish(entity.getId());
+
+        } catch (Exception e) {
+
+            log.error("Publish Kafka export #{} thất bại", entity.getId(), e);
+
+
+            /*
+             * DB đã NEW nhưng Kafka không nhận được.
+             *
+             * Không được để NEW nằm kẹt mãi.
+             */
+            repository.markNewError(entity.getId(), truncate("Kafka publish error: " + e.getMessage(), 4000));
+
+
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Không gửi được yêu cầu export vào Kafka");
+        }
+
+
+        /*
+         * 5. API trả request cho FE.
+         */
         return toResponse(entity);
     }
 
 
-    @Override
-    public List<Long> findNextPendingIds(int limit) {
-        return repository.findNextPendingIds(limit);
-    }
+//    @Override
+//    public List<Long> findNextPendingIds(int limit) {
+//        return repository.findNextPendingIds(limit);
+//    }
 
     @Override
     public List<ExportRequestResponse> findAllByUserId(Long userId) {
@@ -84,10 +173,10 @@ public class ExportServiceImpl implements ExportService {
     }
 
 
-    @Override
-    public void resetToNew(Long id) {
-        repository.resetToNew(id);
-    }
+//    @Override
+//    public void resetToNew(Long id) {
+//        repository.resetToNew(id);
+//    }
 
 
     @Override
@@ -105,15 +194,15 @@ public class ExportServiceImpl implements ExportService {
     }
 
 
-    @Override
-    public void recoverStale() {
-        LocalDateTime before = LocalDateTime.now().minusMinutes(staleAfterMinutes);
-        List<Long> ids = repository.findStaleProcessingIds(before);
-        for (Long id : ids) {
-            repository.markError(id, "Export PROCESSING quá " + staleAfterMinutes + " phút.");
-            log.warn("Export #{} bị đánh dấu ERROR do stale", id);
-        }
-    }
+//    @Override
+//    public void recoverStale() {
+//        LocalDateTime before = LocalDateTime.now().minusMinutes(staleAfterMinutes);
+//        List<Long> ids = repository.findStaleProcessingIds(before);
+//        for (Long id : ids) {
+//            repository.markError(id, "Export PROCESSING quá " + staleAfterMinutes + " phút.");
+//            log.warn("Export #{} bị đánh dấu ERROR do stale", id);
+//        }
+//    }
 
 
     @Override
