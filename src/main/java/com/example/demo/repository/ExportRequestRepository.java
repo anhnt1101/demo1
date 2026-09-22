@@ -1,30 +1,16 @@
 package com.example.demo.repository;
 
 import com.example.demo.entity.ExportRequest;
-import org.springframework.data.jpa.repository.*;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface ExportRequestRepository extends JpaRepository<ExportRequest, Long> {
-
-    /*
-     * Lấy các request NEW cũ nhất.
-     */
-//    @Query(value = """
-//            SELECT ID
-//            FROM (
-//                SELECT ID
-//                FROM EXPORT_REQUEST
-//                WHERE EXPORT_STATUS = 'NEW'
-//                ORDER BY CREATED_DATE ASC, ID ASC
-//            )
-//            WHERE ROWNUM <= :limit
-//            """, nativeQuery = true)
-//    List<Long> findNextPendingIds(@Param("limit") int limit);
 
     /*
      * Atomic claim.
@@ -43,20 +29,6 @@ public interface ExportRequestRepository extends JpaRepository<ExportRequest, Lo
               AND EXPORT_STATUS = 'NEW'
             """, nativeQuery = true)
     int claim(@Param("id") Long id);
-
-    /*
-     * Executor reject sau khi đã claim.
-     */
-//    @Transactional
-//    @Modifying
-//    @Query(value = """
-//            UPDATE EXPORT_REQUEST
-//            SET EXPORT_STATUS = 'NEW',
-//                STARTED_DATE = NULL
-//            WHERE ID = :id
-//              AND EXPORT_STATUS = 'PROCESSING'
-//            """, nativeQuery = true)
-//    int resetToNew(@Param("id") Long id);
 
     @Transactional
     @Modifying
@@ -96,15 +68,6 @@ public interface ExportRequestRepository extends JpaRepository<ExportRequest, Lo
               AND EXPORT_STATUS = 'COMPLETED'
             """, nativeQuery = true)
     int markDownloaded(@Param("id") Long id);
-
-
-//    @Query(value = """
-//            SELECT ID
-//            FROM EXPORT_REQUEST
-//            WHERE EXPORT_STATUS = 'PROCESSING'
-//              AND STARTED_DATE < :staleBefore
-//            """, nativeQuery = true)
-//    List<Long> findStaleProcessingIds(@Param("staleBefore") LocalDateTime staleBefore);
 
     Optional<ExportRequest> findByIdAndUserId(Long id, Long userID);
 

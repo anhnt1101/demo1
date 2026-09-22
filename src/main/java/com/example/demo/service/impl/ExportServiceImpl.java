@@ -1,27 +1,28 @@
 package com.example.demo.service.impl;
 
-import com.example.demo.constants.*;
+import com.example.demo.constants.DownloadStatus;
+import com.example.demo.constants.ExportStatus;
 import com.example.demo.dto.Request.CreateExportRequest;
 import com.example.demo.dto.Response.DownloadUrlResponse;
 import com.example.demo.dto.Response.ExportRequestResponse;
 import com.example.demo.entity.ExportRequest;
+import com.example.demo.kafka.ExportJobPublisher;
 import com.example.demo.repository.ExportRequestRepository;
 import com.example.demo.service.ExportHandler;
 import com.example.demo.service.ExportService;
 import com.example.demo.service.MinioStorageService;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.example.demo.kafka.ExportJobPublisher;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,17 +39,6 @@ public class ExportServiceImpl implements ExportService {
 
     private final Map<String, ExportHandler> handlerByType;
 
-
-    @Value("${export.stale-after-minutes:120}")
-    private int staleAfterMinutes;
-
-//    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers) {
-//        this.repository = repository;
-//        this.objectMapper = objectMapper;
-//        this.minioStorageService = minioStorageService;
-//        this.handlerByType = handlers.stream().collect(Collectors.toMap(ExportHandler::getExportType, handler -> handler));
-//    }
-
     public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportJobPublisher exportJobPublisher) {
 
         this.repository = repository;
@@ -61,25 +51,6 @@ public class ExportServiceImpl implements ExportService {
 
         this.handlerByType = handlers.stream().collect(Collectors.toMap(ExportHandler::getExportType, handler -> handler));
     }
-
-
-//    @Override
-//    @Transactional
-//    public ExportRequestResponse createRequest(Long id, CreateExportRequest request) {
-//
-//        if (!handlerByType.containsKey(request.getExportType())) {
-//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không hỗ trợ exportType: " + request.getExportType());
-//        }
-//
-//        ExportRequest entity = new ExportRequest();
-//        entity.setUserId(id);
-//        entity.setExportType(request.getExportType());
-//        entity.setParams(toJson(request.getParams()));
-//        entity.setExportStatus(ExportStatus.NEW);
-//        entity.setDownloadStatus(DownloadStatus.NOT_DOWNLOADED);
-//        repository.save(entity);
-//        return toResponse(entity);
-//    }
 
     @Override
     public ExportRequestResponse createRequest(Long userId, CreateExportRequest request) {
@@ -154,12 +125,6 @@ public class ExportServiceImpl implements ExportService {
         return toResponse(entity);
     }
 
-
-//    @Override
-//    public List<Long> findNextPendingIds(int limit) {
-//        return repository.findNextPendingIds(limit);
-//    }
-
     @Override
     public List<ExportRequestResponse> findAllByUserId(Long userId) {
 
@@ -171,13 +136,6 @@ public class ExportServiceImpl implements ExportService {
     public boolean tryClaim(Long id) {
         return repository.claim(id) == 1;
     }
-
-
-//    @Override
-//    public void resetToNew(Long id) {
-//        repository.resetToNew(id);
-//    }
-
 
     @Override
     public void markCompleted(Long id, String fileName, String objectKey, String path) {
@@ -192,18 +150,6 @@ public class ExportServiceImpl implements ExportService {
     public void markError(Long id, String message) {
         repository.markError(id, truncate(message, 4000));
     }
-
-
-//    @Override
-//    public void recoverStale() {
-//        LocalDateTime before = LocalDateTime.now().minusMinutes(staleAfterMinutes);
-//        List<Long> ids = repository.findStaleProcessingIds(before);
-//        for (Long id : ids) {
-//            repository.markError(id, "Export PROCESSING quá " + staleAfterMinutes + " phút.");
-//            log.warn("Export #{} bị đánh dấu ERROR do stale", id);
-//        }
-//    }
-
 
     @Override
     public ExportRequest getForProcessing(Long id) {

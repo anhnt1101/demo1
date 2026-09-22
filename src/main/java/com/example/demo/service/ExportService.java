@@ -12,19 +12,13 @@ public interface ExportService {
 
     ExportRequestResponse createRequest(Long id, CreateExportRequest request);
 
-//    List<Long> findNextPendingIds(int limit);
-
     List<ExportRequestResponse> findAllByUserId(Long userId);
 
     boolean tryClaim(Long id);
 
-//    void resetToNew(Long id);
-
     void markCompleted(Long id, String fileName, String objectKey, String path);
 
     void markError(Long id, String message);
-
-//    void recoverStale();
 
     ExportRequest getForProcessing(Long id);
 
