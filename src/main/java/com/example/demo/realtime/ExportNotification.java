@@ -6,6 +6,8 @@ public record ExportNotification(
 
         Long userId,
 
+        String username,
+
         String exportStatus,
 
         Integer progress,

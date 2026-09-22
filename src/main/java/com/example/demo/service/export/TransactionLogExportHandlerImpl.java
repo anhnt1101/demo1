@@ -1,9 +1,8 @@
-package com.example.demo.service.impl;
+package com.example.demo.service.export;
 
 import com.example.demo.constants.ExportType;
 import com.example.demo.dto.Request.TransactionLogRequest;
 import com.example.demo.entity.ExportRequest;
-import com.example.demo.service.ExportHandler;
 import com.example.demo.service.ExportSheetWriter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +56,7 @@ public class TransactionLogExportHandlerImpl implements ExportHandler {
          * 1. Header Excel
          * ==================================================
          */
-        writer.writeHeader("ID", "TRANSACTION_CODE", "ACCOUNT_NO", "AMOUNT", "STATUS", "CREATED_AT", "DESCRIPTION", "REFERENCE_NO", "UPDATED_AT");
+        writer.writeHeader("STT", "TRANSACTION_CODE", "ACCOUNT_NO", "AMOUNT", "STATUS", "CREATED_AT", "DESCRIPTION", "REFERENCE_NO", "UPDATED_AT");
 
 
         /*
@@ -246,7 +245,6 @@ public class TransactionLogExportHandlerImpl implements ExportHandler {
          */
         StringBuilder sql = new StringBuilder("""
                 SELECT
-                    ID,
                     TRANSACTION_CODE,
                     ACCOUNT_NO,
                     AMOUNT,
@@ -335,9 +333,17 @@ public class TransactionLogExportHandlerImpl implements ExportHandler {
                      * 10. Ghi từng row vào Excel
                      * ==================================================
                      */
+                    /*
+                     * STT = số thứ tự 1-based.
+                     *
+                     * processedRows[0] chưa tăng ở thời điểm này
+                     * (dòng "processedRows[0]++;" nằm ngay sau
+                     * writer.writeRow(...)), nên dòng hiện tại
+                     * là dòng thứ processedRows[0] + 1.
+                     */
                     writer.writeRow(
 
-                            rs.getLong("ID"),
+                            processedRows[0] + 1,
 
                             rs.getString("TRANSACTION_CODE"),
 

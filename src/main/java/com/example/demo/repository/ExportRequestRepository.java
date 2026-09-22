@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,5 +85,27 @@ public interface ExportRequestRepository extends JpaRepository<ExportRequest, Lo
               AND EXPORT_STATUS = 'NEW'
             """, nativeQuery = true)
     int markNewError(@Param("id") Long id, @Param("message") String message);
+
+
+    /*
+     * ==================================================
+     * STALE RECOVERY
+     * ==================================================
+     *
+     * Lấy các request đang PROCESSING nhưng
+     * STARTED_DATE quá cũ (worker crash / pod restart
+     * giữa chừng, không kịp markCompleted/markError).
+     *
+     * Trả về entity đầy đủ (không chỉ ID) vì
+     * StaleExportRecoveryJob cần userId để
+     * publish ExportNotification realtime.
+     */
+    @Query(value = """
+            SELECT *
+            FROM EXPORT_REQUEST
+            WHERE EXPORT_STATUS = 'PROCESSING'
+              AND STARTED_DATE < :staleBefore
+            """, nativeQuery = true)
+    List<ExportRequest> findStaleProcessing(@Param("staleBefore") LocalDateTime staleBefore);
 
 }

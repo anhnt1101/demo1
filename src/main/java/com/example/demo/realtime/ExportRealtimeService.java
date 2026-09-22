@@ -58,6 +58,42 @@ public class ExportRealtimeService {
 
 
     /**
+     * ==================================================
+     * TỐI ƯU: đọc lại progress từ Redis.
+     * ==================================================
+     * <p>
+     * Trước đây key export:progress:{id} được ghi
+     * nhưng KHÔNG có chỗ nào đọc lại — Redis Pub/Sub
+     * là fire-and-forget, nếu FE mất kết nối đúng lúc
+     * publish() chạy thì event đó mất vĩnh viễn.
+     * <p>
+     * Dùng method này làm fallback: FE reconnect/mở lại
+     * trang thì gọi 1 API để lấy progress hiện tại thay vì
+     * chỉ ngồi chờ WebSocket.
+     * <p>
+     * Trả về null nếu Redis miss hoặc lỗi — caller phải
+     * tự fallback tiếp theo trạng thái DB.
+     */
+    public Integer getProgress(Long requestId) {
+
+        try {
+
+            String key = "export:progress:" + requestId;
+
+            String value = redisTemplate.opsForValue().get(key);
+
+            return value == null ? null : Integer.valueOf(value);
+
+        } catch (Exception e) {
+
+            log.warn("Không đọc được Redis progress cho export #{}", requestId, e);
+
+            return null;
+        }
+    }
+
+
+    /**
      * Publish event vào Redis Pub/Sub.
      */
     public void publish(ExportNotification notification) {

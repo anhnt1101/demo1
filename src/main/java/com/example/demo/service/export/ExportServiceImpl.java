@@ -1,17 +1,19 @@
-package com.example.demo.service.impl;
+package com.example.demo.service.export;
 
 import com.example.demo.constants.DownloadStatus;
 import com.example.demo.constants.ExportStatus;
 import com.example.demo.dto.Request.CreateExportRequest;
 import com.example.demo.dto.Response.DownloadUrlResponse;
+import com.example.demo.dto.Response.ExportProgressResponse;
 import com.example.demo.dto.Response.ExportRequestResponse;
 import com.example.demo.entity.ExportRequest;
 import com.example.demo.kafka.ExportJobPublisher;
+import com.example.demo.realtime.ExportNotification;
+import com.example.demo.realtime.ExportRealtimeService;
 import com.example.demo.repository.ExportRequestRepository;
-import com.example.demo.service.ExportHandler;
-import com.example.demo.service.ExportService;
-import com.example.demo.service.MinioStorageService;
+import com.example.demo.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,14 @@ public class ExportServiceImpl implements ExportService {
 
     private final Map<String, ExportHandler> handlerByType;
 
-    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportJobPublisher exportJobPublisher) {
+    private final ExportRealtimeService realtimeService;
+
+    private final UserRepository userRepository;
+
+    @Value("${export.stale-after-minutes:120}")
+    private int staleAfterMinutes;
+
+    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportJobPublisher exportJobPublisher, ExportRealtimeService realtimeService, UserRepository userRepository) {
 
         this.repository = repository;
 
@@ -48,6 +57,10 @@ public class ExportServiceImpl implements ExportService {
         this.minioStorageService = minioStorageService;
 
         this.exportJobPublisher = exportJobPublisher;
+
+        this.realtimeService = realtimeService;
+
+        this.userRepository = userRepository;
 
         this.handlerByType = handlers.stream().collect(Collectors.toMap(ExportHandler::getExportType, handler -> handler));
     }
@@ -152,6 +165,48 @@ public class ExportServiceImpl implements ExportService {
     }
 
     @Override
+    public void recoverStale() {
+
+        LocalDateTime staleBefore = LocalDateTime.now().minusMinutes(staleAfterMinutes);
+
+        List<ExportRequest> staleRequests = repository.findStaleProcessing(staleBefore);
+
+        if (staleRequests.isEmpty()) {
+            return;
+        }
+
+        log.warn("Tìm thấy {} export PROCESSING quá {} phút, chuyển ERROR", staleRequests.size(), staleAfterMinutes);
+
+        for (ExportRequest stale : staleRequests) {
+
+            String message = "Export PROCESSING quá " + staleAfterMinutes + " phút (worker có thể đã crash), tự động đánh dấu ERROR.";
+
+            /*
+             * WHERE EXPORT_STATUS = 'PROCESSING' trong markError
+             * đảm bảo nếu worker vừa markCompleted xong đúng lúc
+             * job này chạy thì sẽ không ghi đè COMPLETED -> ERROR.
+             */
+            int updated = repository.markError(stale.getId(), message);
+
+            if (updated != 1) {
+                continue;
+            }
+
+            log.warn("Export #{} bị đánh dấu ERROR do stale (userId={})", stale.getId(), stale.getUserId());
+
+            /*
+             * Lấy username để push WebSocket, tương tự ExportWorker.
+             * Không có username thì vẫn OK, chỉ là FE không nhận
+             * được cập nhật realtime (bảng "mine" vẫn có ERROR khi tải lại).
+             */
+            String username = userRepository.findById(stale.getUserId()).map(com.example.demo.entity.User::getUsername).orElse(null);
+
+            realtimeService.publish(new ExportNotification(stale.getId(), stale.getUserId(), username, ExportStatus.ERROR, 0, null, message));
+        }
+    }
+
+
+    @Override
     public ExportRequest getForProcessing(Long id) {
         ExportRequest request = repository.findById(id).orElseThrow(() -> new IllegalStateException("Không tìm thấy export #" + id));
         if (!ExportStatus.PROCESSING.equals(request.getExportStatus())) {
@@ -165,6 +220,33 @@ public class ExportServiceImpl implements ExportService {
     public ExportRequestResponse getStatus(Long userID, Long id) {
         return toResponse(getOwned(userID, id));
     }
+
+    @Override
+    public ExportProgressResponse getProgress(Long userID, Long id) {
+
+        ExportRequest request = getOwned(userID, id);
+
+        Integer progress = switch (request.getExportStatus()) {
+
+            case ExportStatus.COMPLETED -> 100;
+
+            case ExportStatus.NEW -> 0;
+
+            /*
+             * PROCESSING / ERROR -> đọc Redis.
+             *
+             * ERROR vẫn có thể có progress dở dang,
+             * hữu ích để FE hiển thị "lỗi lúc 47%".
+             *
+             * Redis miss (TTL hết hạn, Redis restart)
+             * thì trả null - FE tự hiểu là "chưa rõ %".
+             */
+            default -> realtimeService.getProgress(id);
+        };
+
+        return new ExportProgressResponse(request.getId(), request.getExportStatus(), progress);
+    }
+
 
     @Override
     public DownloadUrlResponse issueDownloadUrl(Long userID, Long id) {
@@ -217,6 +299,6 @@ public class ExportServiceImpl implements ExportService {
     }
 
     private ExportRequestResponse toResponse(ExportRequest e) {
-        return new ExportRequestResponse(e.getId(), e.getExportType(), e.getExportStatus(), e.getDownloadStatus(), e.getFileName(), e.getErrorMessage(), e.getPath(), e.getCreatedDate(), e.getStartedDate(), e.getCompletedDate(), e.getDownloadedDate());
+        return new ExportRequestResponse(e.getId(), e.getExportType(), e.getExportStatus(), e.getDownloadStatus(), e.getFileName(), e.getPath(), e.getErrorMessage(), e.getCreatedDate(), e.getStartedDate(), e.getCompletedDate(), e.getDownloadedDate());
     }
 }

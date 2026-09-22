@@ -1,7 +1,5 @@
 package com.example.demo.realtime;
 
-import com.example.demo.entity.User;
-import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
@@ -21,8 +19,6 @@ public class ExportRedisSubscriber implements MessageListener {
 
     private final SimpMessagingTemplate messagingTemplate;
 
-    private final UserRepository userRepository;
-
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
@@ -39,18 +35,19 @@ public class ExportRedisSubscriber implements MessageListener {
 
 
             /*
-             * Notification hiện tại chứa userId.
+             * ==================================================
+             * TỐI ƯU: bỏ userRepository.findById() ở đây.
+             * ==================================================
              *
-             * WebSocket lại xác định user theo username.
+             * username giờ được ExportWorker gắn sẵn
+             * vào notification lúc publish (1 lần / export,
+             * không phải 1 lần / progress tick).
              *
-             * Vì vậy lấy username từ DB.
+             * Không còn query DB trên hot path này nữa.
              */
-            User user = userRepository.findById(notification.userId()).orElse(null);
+            if (notification.username() == null || notification.username().isBlank()) {
 
-
-            if (user == null) {
-
-                log.warn("Không tìm thấy userId={} để push WebSocket export #{}", notification.userId(), notification.requestId());
+                log.warn("Notification export #{} thiếu username, bỏ qua push WebSocket", notification.requestId());
 
                 return;
             }
@@ -65,10 +62,10 @@ public class ExportRedisSubscriber implements MessageListener {
              *
              * /user/queue/exports
              */
-            messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/exports", notification);
+            messagingTemplate.convertAndSendToUser(notification.username(), "/queue/exports", notification);
 
 
-            log.info("Push WebSocket export #{} status={} -> user={}", notification.requestId(), notification.exportStatus(), user.getUsername());
+            log.info("Push WebSocket export #{} status={} -> user={}", notification.requestId(), notification.exportStatus(), notification.username());
 
         } catch (Exception e) {
 

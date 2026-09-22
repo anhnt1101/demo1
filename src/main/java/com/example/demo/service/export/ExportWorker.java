@@ -1,9 +1,12 @@
-package com.example.demo.service;
+package com.example.demo.service.export;
 
 import com.example.demo.constants.ExportStatus;
 import com.example.demo.entity.ExportRequest;
+import com.example.demo.entity.User;
 import com.example.demo.realtime.ExportNotification;
 import com.example.demo.realtime.ExportRealtimeService;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.service.ExportSheetWriter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +31,13 @@ public class ExportWorker {
 
     private final ExportRealtimeService realtimeService;
 
+    /*
+     * Dùng để lấy username 1 LẦN duy nhất khi bắt đầu xử lý
+     * một export, thay vì ExportRedisSubscriber phải query
+     * DB cho MỖI message realtime (progress, completed, error).
+     */
+    private final UserRepository userRepository;
+
     @Value("${export.sxssf-window-size:200}")
     private int sxssfWindowSize;
 
@@ -36,13 +46,15 @@ public class ExportWorker {
     private String tempDir;
 
 
-    public ExportWorker(ExportService exportService, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportRealtimeService realtimeService) {
+    public ExportWorker(ExportService exportService, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportRealtimeService realtimeService, UserRepository userRepository) {
 
         this.exportService = exportService;
 
         this.minioStorageService = minioStorageService;
 
         this.realtimeService = realtimeService;
+
+        this.userRepository = userRepository;
 
         this.handlerByType = handlers.stream().collect(Collectors.toMap(ExportHandler::getExportType, handler -> handler));
     }
@@ -64,6 +76,13 @@ public class ExportWorker {
          */
         ExportRequest request = null;
 
+        /*
+         * Khai báo ngoài try (giống request)
+         * để catch (ERROR) vẫn dùng được username
+         * khi publish ExportNotification.
+         */
+        String username = null;
+
         try {
 
             /*
@@ -72,6 +91,22 @@ public class ExportWorker {
              * NEW -> PROCESSING
              */
             request = exportService.getForProcessing(requestId);
+
+
+            /*
+             * Lấy username 1 LẦN ở đây.
+             *
+             * Toàn bộ notification (PROCESSING/COMPLETED/ERROR)
+             * của export này sẽ dùng lại giá trị này,
+             * không query DB lại nữa.
+             */
+            username = userRepository.findById(request.getUserId())
+                    .map(User::getUsername)
+                    .orElse(null);
+
+            if (username == null) {
+                log.warn("Không tìm thấy username cho userId={}, export #{} sẽ không có realtime WebSocket", request.getUserId(), requestId);
+            }
 
 
             ExportHandler handler = handlerByType.get(request.getExportType());
@@ -143,6 +178,18 @@ public class ExportWorker {
              */
             final ExportRequest finalRequest = request;
 
+            /*
+             * Lambda yêu cầu biến capture phải final/effectively final.
+             *
+             * "username" ở trên được khai báo "= null" rồi gán lại
+             * trong try -> bị coi là gán 2 lần -> KHÔNG effectively
+             * final -> lambda bên dưới không compile được.
+             *
+             * Tạo 1 bản copy final riêng, giống cách làm với
+             * "finalRequest", chỉ dùng bên trong lambda.
+             */
+            final String finalUsername = username;
+
 
             handler.writeRows(request, writer, progress -> {
 
@@ -161,11 +208,23 @@ public class ExportWorker {
                  *      ↓
                  * Angular
                  */
-                realtimeService.publish(new ExportNotification(requestId, finalRequest.getUserId(), ExportStatus.PROCESSING, progress, null, "Đang xuất Excel " + progress + "%"));
+                realtimeService.publish(new ExportNotification(requestId, finalRequest.getUserId(), finalUsername, ExportStatus.PROCESSING, progress, null, "Đang xuất Excel " + progress + "%"));
 
 
                 log.info("Export #{} user={} progress={}%", requestId, finalRequest.getUserId(), progress);
             });
+
+
+            /*
+             * ==================================================
+             * Auto-fit độ rộng cột
+             * ==================================================
+             *
+             * Gọi sau khi handler.writeRows(...) ghi xong TOÀN BỘ
+             * dữ liệu (mọi sheet), trước khi ghi ra file - lúc này
+             * writer đã biết độ dài tối đa thật sự của từng cột.
+             */
+            writer.autoFitColumns();
 
 
             /*
@@ -249,7 +308,7 @@ public class ExportWorker {
              * Sau khi DB thực sự COMPLETED
              * mới publish sự kiện COMPLETED.
              */
-            realtimeService.publish(new ExportNotification(requestId, request.getUserId(), ExportStatus.COMPLETED, 100, fileName, "File Excel đã sẵn sàng"));
+            realtimeService.publish(new ExportNotification(requestId, request.getUserId(), username, ExportStatus.COMPLETED, 100, fileName, "File Excel đã sẵn sàng"));
 
 
             log.info("Export #{} COMPLETED, rows={}, object={}, path={}", requestId, writer.getTotalRowsWritten(), objectKey, path);
@@ -285,7 +344,7 @@ public class ExportWorker {
              */
             if (request != null) {
 
-                realtimeService.publish(new ExportNotification(requestId, request.getUserId(), ExportStatus.ERROR, 0, null, e.getMessage()));
+                realtimeService.publish(new ExportNotification(requestId, request.getUserId(), username, ExportStatus.ERROR, 0, null, e.getMessage()));
             }
 
         } finally {

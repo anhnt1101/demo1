@@ -2,13 +2,13 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.Request.CreateExportRequest;
 import com.example.demo.dto.Response.DownloadUrlResponse;
+import com.example.demo.dto.Response.ExportProgressResponse;
 import com.example.demo.dto.Response.ExportRequestResponse;
 import com.example.demo.entity.User;
-import com.example.demo.service.ExportService;
+import com.example.demo.service.export.ExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +29,16 @@ public class ExportController {
     @GetMapping("/{id}")
     public ResponseEntity<ExportRequestResponse> getStatus(@AuthenticationPrincipal User user, @PathVariable Long id) {
         return ResponseEntity.ok(exportService.getStatus(user.getId(), id));
+    }
+
+    /*
+     * Fallback khi FE reconnect WebSocket (mở lại tab,
+     * mất mạng chốc lát...) - lấy ngay trạng thái + %
+     * hiện tại thay vì phải chờ message realtime kế tiếp.
+     */
+    @GetMapping("/{id}/progress")
+    public ResponseEntity<ExportProgressResponse> getProgress(@AuthenticationPrincipal User user, @PathVariable Long id) {
+        return ResponseEntity.ok(exportService.getProgress(user.getId(), id));
     }
 
     @GetMapping("/mine")
