@@ -20,15 +20,6 @@ public interface ExportService {
 
     void markError(Long id, String message);
 
-    /*
-     * Quét EXPORT_REQUEST đang PROCESSING quá lâu
-     * (worker crash giữa chừng) -> chuyển ERROR
-     * và publish ExportNotification realtime.
-     *
-     * Gọi định kỳ bởi StaleExportRecoveryJob.
-     */
-    void recoverStale();
-
     ExportRequest getForProcessing(Long id);
 
     ExportRequestResponse getStatus(Long userID, Long id);
@@ -41,4 +32,7 @@ public interface ExportService {
     ExportProgressResponse getProgress(Long userID, Long id);
 
     DownloadUrlResponse issueDownloadUrl(Long userID, Long id);
+
+    void deleteRequest(Long userID, Long id);
+
 }

@@ -116,4 +116,23 @@ public class ExportRealtimeService {
             log.warn("Không publish được Redis event cho export #{}", notification.requestId(), e);
         }
     }
+
+    /**
+     * Xóa key progress ngay khi export bị xóa,
+     * thay vì chờ TTL (24h mặc định) tự hết hạn.
+     * <p>
+     * Không bắt buộc (key tự hết hạn), nhưng dọn ngay
+     * cho sạch nếu id đó được tái sử dụng ở đâu đó sau này.
+     */
+    public void deleteProgress(Long requestId) {
+
+        try {
+
+            redisTemplate.delete("export:progress:" + requestId);
+
+        } catch (Exception e) {
+
+            log.warn("Không xóa được Redis progress cho export #{}", requestId, e);
+        }
+    }
 }

@@ -31,6 +31,14 @@ public class ExportController {
         return ResponseEntity.ok(exportService.getStatus(user.getId(), id));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal User user, @PathVariable Long id) {
+
+        exportService.deleteRequest(user.getId(), id);
+
+        return ResponseEntity.noContent().build();
+    }
+
     /*
      * Fallback khi FE reconnect WebSocket (mở lại tab,
      * mất mạng chốc lát...) - lấy ngay trạng thái + %

@@ -1,5 +1,6 @@
 package com.example.demo.service.export;
 
+import com.example.demo.Kafka.ExportJobPublisher;
 import com.example.demo.constants.DownloadStatus;
 import com.example.demo.constants.ExportStatus;
 import com.example.demo.dto.Request.CreateExportRequest;
@@ -7,8 +8,6 @@ import com.example.demo.dto.Response.DownloadUrlResponse;
 import com.example.demo.dto.Response.ExportProgressResponse;
 import com.example.demo.dto.Response.ExportRequestResponse;
 import com.example.demo.entity.ExportRequest;
-import com.example.demo.kafka.ExportJobPublisher;
-import com.example.demo.realtime.ExportNotification;
 import com.example.demo.realtime.ExportRealtimeService;
 import com.example.demo.repository.ExportRequestRepository;
 import com.example.demo.repository.UserRepository;
@@ -164,47 +163,6 @@ public class ExportServiceImpl implements ExportService {
         repository.markError(id, truncate(message, 4000));
     }
 
-    @Override
-    public void recoverStale() {
-
-        LocalDateTime staleBefore = LocalDateTime.now().minusMinutes(staleAfterMinutes);
-
-        List<ExportRequest> staleRequests = repository.findStaleProcessing(staleBefore);
-
-        if (staleRequests.isEmpty()) {
-            return;
-        }
-
-        log.warn("Tìm thấy {} export PROCESSING quá {} phút, chuyển ERROR", staleRequests.size(), staleAfterMinutes);
-
-        for (ExportRequest stale : staleRequests) {
-
-            String message = "Export PROCESSING quá " + staleAfterMinutes + " phút (worker có thể đã crash), tự động đánh dấu ERROR.";
-
-            /*
-             * WHERE EXPORT_STATUS = 'PROCESSING' trong markError
-             * đảm bảo nếu worker vừa markCompleted xong đúng lúc
-             * job này chạy thì sẽ không ghi đè COMPLETED -> ERROR.
-             */
-            int updated = repository.markError(stale.getId(), message);
-
-            if (updated != 1) {
-                continue;
-            }
-
-            log.warn("Export #{} bị đánh dấu ERROR do stale (userId={})", stale.getId(), stale.getUserId());
-
-            /*
-             * Lấy username để push WebSocket, tương tự ExportWorker.
-             * Không có username thì vẫn OK, chỉ là FE không nhận
-             * được cập nhật realtime (bảng "mine" vẫn có ERROR khi tải lại).
-             */
-            String username = userRepository.findById(stale.getUserId()).map(com.example.demo.entity.User::getUsername).orElse(null);
-
-            realtimeService.publish(new ExportNotification(stale.getId(), stale.getUserId(), username, ExportStatus.ERROR, 0, null, message));
-        }
-    }
-
 
     @Override
     public ExportRequest getForProcessing(Long id) {
@@ -263,6 +221,48 @@ public class ExportServiceImpl implements ExportService {
         repository.markDownloaded(id);
         LocalDateTime expiresAt = request.getCompletedDate().plusHours(24);
         return new DownloadUrlResponse(request.getPath(), expiresAt);
+    }
+
+    @Override
+    public void deleteRequest(Long userID, Long id) {
+
+        ExportRequest request = getOwned(userID, id);
+
+        /*
+         * Chỉ xóa khi user ĐÃ TẢI file.
+         *
+         * - NEW/PROCESSING: đang chạy dở, xóa DB row lúc này
+         *   worker vẫn ghi tiếp -> markCompleted/markError sẽ
+         *   fail vì WHERE ID = :id không tìm thấy row.
+         * - COMPLETED nhưng NOT_DOWNLOADED: user chưa kịp lấy
+         *   file, xóa mất thì mất luôn kết quả export.
+         * - ERROR: không có file để "đã tải", cũng chặn ở đây
+         *   (muốn xóa export lỗi thì cần API/luồng khác).
+         */
+        if (!DownloadStatus.DOWNLOADED.equals(request.getDownloadStatus())) {
+
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ được xóa export sau khi đã tải file");
+        }
+
+        /*
+         * Xóa file MinIO trước.
+         *
+         * deleteQuietly() nuốt lỗi (Redis/S3 tạm mất kết nối...)
+         * để không chặn việc xóa DB row - chấp nhận khả năng
+         * còn sót object rác trên MinIO hơn là kẹt cứng thao tác
+         * xóa của user chỉ vì MinIO tạm lỗi.
+         */
+
+        if (request.getObjectKey() != null) {
+
+            minioStorageService.deleteQuietly(request.getObjectKey());
+        }
+
+        realtimeService.deleteProgress(id);
+
+        repository.delete(request);
+
+        log.info("Đã xóa export #{} (userId={}) sau khi user đã tải file", id, userID);
     }
 
 
