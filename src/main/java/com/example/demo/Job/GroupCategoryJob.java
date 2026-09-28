@@ -12,10 +12,10 @@ public class GroupCategoryJob {
     private final GroupCategoryService groupCategoryService;
 
     @Scheduled(fixedRate = 5000)
-    public void testJob() {
+    public void jobGroupCategory() {
 
         groupCategoryService.updateIsActiveByEffectiveDate();
-        System.out.println("JOB UPDATE GROUP_CATEGORY");
+//        System.out.println("JOB UPDATE GROUP_CATEGORY");
     }
 
 }

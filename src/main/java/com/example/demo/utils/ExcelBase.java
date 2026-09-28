@@ -99,67 +99,6 @@ public class ExcelBase {
         }
     }
 
-    // Hàm hỗ trợ kiểm tra dòng trống
-    private static boolean isRowEmpty(Row row) {
-        for (int c = row.getFirstCellNum(); c < row.getLastCellNum(); c++) {
-            Cell cell = row.getCell(c);
-            if (cell != null && cell.getCellType() != CellType.BLANK) return false;
-        }
-        return true;
-    }
-
-    // Hàm hỗ trợ đọc giá trị ô bất kể kiểu dữ liệu
-    private static Object getCellValue(Cell cell) {
-        return switch (cell.getCellType()) {
-            case STRING -> cell.getStringCellValue();
-            case NUMERIC -> DateUtil.isCellDateFormatted(cell) ? cell.getDateCellValue() : cell.getNumericCellValue();
-            case BOOLEAN -> cell.getBooleanCellValue();
-            default -> "";
-        };
-    }
-
-    // Hàm hỗ trợ set giá trị (xử lý ép kiểu dữ liệu)
-    private static void setFieldValue(Object obj, String fieldName, Object value, SimpleDateFormat sdf) throws Exception {
-        if (value == null || value.toString().isEmpty()) return;
-
-        if (fieldName.contains(".")) {
-            String[] parts = fieldName.split("\\.");
-            Object currentObj = obj;
-
-            for (int i = 0; i < parts.length - 1; i++) {
-                String part = parts[i];
-                Field field = getDeclaredField(currentObj.getClass(), part);
-                field.setAccessible(true);
-
-                Object nextObj = field.get(currentObj);
-                if (nextObj == null) {
-                    // TỰ ĐỘNG KHỞI TẠO: Ví dụ tạo mới ComponentCode()
-                    nextObj = field.getType().getDeclaredConstructor().newInstance();
-                    field.set(currentObj, nextObj);
-                }
-                currentObj = nextObj;
-            }
-            fieldName = parts[parts.length - 1];
-            obj = currentObj;
-        }
-
-        // --- ĐOẠN GÁN GIÁ TRỊ CUỐI CÙNG (GIỮ NGUYÊN) ---
-        Field field = getDeclaredField(obj.getClass(), fieldName);
-        field.setAccessible(true);
-        Class<?> type = field.getType();
-
-        if (type == String.class) {
-            field.set(obj, value.toString());
-        } else if (type == Integer.class || type == int.class) {
-            field.set(obj, value instanceof Number ? ((Number) value).intValue() : Integer.parseInt(value.toString().trim()));
-        } else if (type == Long.class || type == long.class) {
-            field.set(obj, value instanceof Number ? ((Number) value).longValue() : Long.parseLong(value.toString().trim()));
-        } else if (type == Date.class) {
-            if (value instanceof Date) field.set(obj, value);
-            else field.set(obj, sdf.parse(value.toString()));
-        }
-    }
-
     private static Object getFieldValue(Object obj, String fieldName) throws Exception {
         if (obj == null) return null;
 

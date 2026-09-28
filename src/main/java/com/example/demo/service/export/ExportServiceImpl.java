@@ -218,8 +218,9 @@ public class ExportServiceImpl implements ExportService {
 
             throw new ResponseStatusException(HttpStatus.GONE, "URL tải file không tồn tại");
         }
+        LocalDateTime expiresAt = minioStorageService.calculateExpiredAt();
+
         repository.markDownloaded(id);
-        LocalDateTime expiresAt = request.getCompletedDate().plusHours(24);
         return new DownloadUrlResponse(request.getPath(), expiresAt);
     }
 
