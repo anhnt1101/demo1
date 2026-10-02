@@ -51,11 +51,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable()) // API JWT thuần, không dùng session/cookie
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).authorizeHttpRequests(auth -> auth
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())).
+                sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).
+                authorizeHttpRequests(auth -> auth
 
                         .requestMatchers("/api/auth/**", "/ws", "/ws/**").permitAll()
 
-                        .anyRequest().authenticated()).authenticationProvider(authenticationProvider()).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().authenticated()).authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

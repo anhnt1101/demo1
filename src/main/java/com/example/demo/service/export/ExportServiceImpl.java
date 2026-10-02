@@ -1,6 +1,5 @@
 package com.example.demo.service.export;
 
-import com.example.demo.Kafka.ExportJobPublisher;
 import com.example.demo.constants.DownloadStatus;
 import com.example.demo.constants.ExportStatus;
 import com.example.demo.dto.Request.CreateExportRequest;
@@ -8,7 +7,6 @@ import com.example.demo.dto.Response.DownloadUrlResponse;
 import com.example.demo.dto.Response.ExportProgressResponse;
 import com.example.demo.dto.Response.ExportRequestResponse;
 import com.example.demo.entity.ExportRequest;
-import com.example.demo.realtime.ExportRealtimeService;
 import com.example.demo.repository.ExportRequestRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -40,14 +38,14 @@ public class ExportServiceImpl implements ExportService {
 
     private final Map<String, ExportHandler> handlerByType;
 
-    private final ExportRealtimeService realtimeService;
+    private final ExportRedisService realtimeService;
 
     private final UserRepository userRepository;
 
     @Value("${export.stale-after-minutes:120}")
     private int staleAfterMinutes;
 
-    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportJobPublisher exportJobPublisher, ExportRealtimeService realtimeService, UserRepository userRepository) {
+    public ExportServiceImpl(ExportRequestRepository repository, ObjectMapper objectMapper, MinioStorageService minioStorageService, List<ExportHandler> handlers, ExportJobPublisher exportJobPublisher, ExportRedisService realtimeService, UserRepository userRepository) {
 
         this.repository = repository;
 
@@ -67,73 +65,24 @@ public class ExportServiceImpl implements ExportService {
     @Override
     public ExportRequestResponse createRequest(Long userId, CreateExportRequest request) {
 
-        /*
-         * 1. Kiểm tra loại export có Handler hay không.
-         */
         if (!handlerByType.containsKey(request.getExportType())) {
-
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không hỗ trợ exportType: " + request.getExportType());
         }
 
-        /*
-         * 2. Tạo EXPORT_REQUEST.
-         */
         ExportRequest entity = new ExportRequest();
-
         entity.setUserId(userId);
-
         entity.setExportType(request.getExportType());
-
         entity.setParams(toJson(request.getParams()));
-
         entity.setExportStatus(ExportStatus.NEW);
-
         entity.setDownloadStatus(DownloadStatus.NOT_DOWNLOADED);
-
-
-        /*
-         * 3. Lưu Oracle trước.
-         *
-         * Không đặt @Transactional trên method này
-         * để transaction repository kết thúc trước
-         * khi publish Kafka.
-         */
         entity = repository.saveAndFlush(entity);
-
-
         try {
-
-            /*
-             * 4. Gửi requestId sang Kafka.
-             *
-             * Ví dụ:
-             *
-             * EXPORT_REQUEST ID = 28
-             *
-             * Kafka message = "28"
-             */
             exportJobPublisher.publish(entity.getId());
-
         } catch (Exception e) {
-
             log.error("Publish Kafka export #{} thất bại", entity.getId(), e);
-
-
-            /*
-             * DB đã NEW nhưng Kafka không nhận được.
-             *
-             * Không được để NEW nằm kẹt mãi.
-             */
             repository.markNewError(entity.getId(), truncate("Kafka publish error: " + e.getMessage(), 4000));
-
-
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Không gửi được yêu cầu export vào Kafka");
         }
-
-
-        /*
-         * 5. API trả request cho FE.
-         */
         return toResponse(entity);
     }
 

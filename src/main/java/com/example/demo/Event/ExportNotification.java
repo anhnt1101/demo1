@@ -1,4 +1,4 @@
-package com.example.demo.realtime;
+package com.example.demo.Event;
 
 public record ExportNotification(
 
