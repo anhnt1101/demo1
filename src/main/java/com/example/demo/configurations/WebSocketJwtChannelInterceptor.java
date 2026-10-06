@@ -22,43 +22,30 @@ import org.springframework.stereotype.Component;
 public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
 
     private final JwtUtil jwtUtil;
-
     private final UserDetailsService userDetailsService;
-
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-
         if (accessor == null) {
             return message;
         }
-
         /*
          * Chỉ kiểm tra JWT khi client CONNECT WebSocket.
          */
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-
             String authorization = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
-
             if (authorization == null || !authorization.startsWith("Bearer ")) {
 
                 throw new AccessDeniedException("WebSocket thiếu Authorization Bearer token");
             }
-
             String token = authorization.substring(7);
-
             if (!jwtUtil.isTokenValid(token)) {
                 throw new AccessDeniedException("JWT WebSocket không hợp lệ hoặc đã hết hạn");
             }
-
             String username = jwtUtil.extractUsername(token);
-
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-
             accessor.setUser(authentication);
             log.info("WebSocket CONNECT authenticated: {}", username);
         }

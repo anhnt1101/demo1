@@ -11,11 +11,13 @@ import org.springframework.stereotype.Component;
 public class ExportJobConsumer {
 
     private final ExportService exportService;
-
     private final ExportWorker exportWorker;
 
-
-    @KafkaListener(topics = "${export.kafka.topic:export_jobs}", concurrency = "${export.kafka.concurrency:2}")
+    @KafkaListener(
+            topics = "${export.kafka.topic:export_jobs}",
+            groupId = "${spring.kafka.consumer.group-id:export-workers}",
+            concurrency = "${export.kafka.concurrency:3}"
+    )
     public void consume(String message) {
         Long requestId;
         try {
@@ -24,8 +26,11 @@ public class ExportJobConsumer {
             log.error("Kafka message không hợp lệ: {}", message);
             return;
         }
-        log.info("Kafka consumer received export #{}", requestId);
+        extracted(requestId);
+    }
 
+    private void extracted(Long requestId) {
+        log.info("Kafka consumer received export #{}", requestId);
         if (!exportService.tryClaim(requestId)) {
             log.warn("Export #{} không claim được", requestId);
             return;

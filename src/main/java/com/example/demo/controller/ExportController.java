@@ -9,6 +9,7 @@ import com.example.demo.service.export.ExportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,11 +32,9 @@ public class ExportController {
         return ResponseEntity.ok(exportService.getStatus(user.getId(), id));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@AuthenticationPrincipal User user, @PathVariable Long id) {
-
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> delete(@AuthenticationPrincipal User user, @PathVariable Long id) {
         exportService.deleteRequest(user.getId(), id);
-
         return ResponseEntity.noContent().build();
     }
 
